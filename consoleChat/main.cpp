@@ -2,12 +2,29 @@
 #include <SFML\Network.hpp>
 #include <iostream> 
 #include <string>
+#include <thread>
 #include "TCPSocketManager.h"
 
 const unsigned short PORT = 5000;
 const sf::IpAddress IP = "127.0.0.1";
+bool applicationRunning = false;
 
-std::string GetInput();
+// Function to read from console (adapted for threads)
+void GetLineFromCin_t(std::string* mssg) {
+	while (true) {
+		std::string line;
+		std::getline(std::cin, line);
+		mssg->assign(line);
+	}
+}
+
+void OpenReceiveThread(TCPSocketManager tcpSocketManager, sf::Packet*& packet, std::string* mssg)
+{
+	while (applicationRunning)
+	{
+		tcpSocketManager.Receive(packet, mssg);
+	}
+}
 
 void main() {
 	int server_mode;
@@ -23,11 +40,44 @@ void main() {
 		// server connect
 		tcpSocketManager.Listen(PORT, IP);
 
-		while (true)
-		{
-			std::cout << "Client connected";
-			// LOGIC
+		sf::Packet inPacket, outPacket;
+		std::string sendMessage, receiveMessage;
+
+		std::thread tcpScoketReceive(OpenReceiveThread, tcpSocketManager, inPacket, &receiveMessage);
+		tcpScoketReceive.detach();
+
+		std::cout << "Client connected";
+		while (applicationRunning) {
+			// Logic for receiving
+			if (receiveMessage.size() > 0) {
+				if (receiveMessage == "exit") {
+					applicationRunning = false;
+					// Manages the desconection 
+					break;
+				}
+				std::cout << receiveMessage << std::endl;;
+				receiveMessage.clear();
+			}
+			// Logic for sending
+			// std::cout << "In applicacion loop" << std::endl;
+			if (sendMessage.size() > 0) {
+				if (sendMessage == "exit") {
+					// Desconection
+					applicationRunning = false;
+					sendMessage.clear();
+					break;
+				}
+				else {
+					tcpSocketManager.Send(outPacket, &sendMessage);
+					sendMessage.clear();
+				}
+			}
 		}
+
+		// When the application loop is broken, we have to release resources.
+		tcpSocketManager.Disconnect();
+		tcpScoketReceive.join();
+		//send thread join
 
 		/*sf::TcpListener dispatcher;
 		sf::Socket::Status status = dispatcher.listen(5000, "127.0.0.1");
@@ -50,7 +100,9 @@ void main() {
 		std::cout << "Client mode running";
 		// client connect
 		sf::Socket::Status status = tcpSocketManager.Connect(PORT, IP);
-		sf::Packet packet;
+
+		sf::Packet inPacket, outPacket;
+		std::string sendMessage, receiveMessage;
 
 		switch (status)
 		{
@@ -60,7 +112,7 @@ void main() {
 			// Can now send/reveice mssgs
 			//packet << GetInput();
 
-			tcpSocketManager.Send(packet, PORT, IP);
+			tcpSocketManager.Send(outPacket, &sendMessage);
 			break;
 
 		case sf::Socket::NotReady:
@@ -70,8 +122,8 @@ void main() {
 		case sf::Socket::Disconnected:
 		case sf::Socket::Error:
 		default:
+			applicationRunning = false;
 			std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAH" << std::endl;
-			//tcpSocketManager.Disconnect();
 			break;
 		}
 		
@@ -84,13 +136,6 @@ void main() {
 			std::cout << "Error al conectarsecon elservidor";
 		}*/
 	}
-}
 
-std::string GetInput()
-{
-	std::string mssg;
-
-	std::cin >> mssg;
-
-	return mssg;
+	tcpSocketManager.Disconnect();
 }

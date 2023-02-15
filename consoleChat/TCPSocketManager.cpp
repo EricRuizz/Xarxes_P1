@@ -22,49 +22,39 @@ sf::Socket::Status TCPSocketManager::Listen(unsigned short port, sf::IpAddress i
     return status;
 }
 
-sf::Socket::Status TCPSocketManager::Send(sf::Packet& packet, unsigned short port, sf::IpAddress ip)
+void TCPSocketManager::Send(sf::Packet& packet, std::string* mssg)
 {
-    // Envíode paquetes
-    //sf::Packet packet;
-    //std::string message = "hola";
-    //packet << message;
-
-    // Rellenardata
-    sf::Socket::Status status = sock.send(packet);
-    if(status != sf::Socket::Done)
+    packet << mssg;
+    sf::Socket::Status status = socket.send(packet);
+    std::cout << "Message sent:" << mssg << std::endl;
+    if (status != sf::Socket::Done)
     {
-        // Ha fallado el envío de datos
-        std::cout << "Error al conectarse con el servidor";
+        // Error when sending data
     }
-    sock.disconnect();
-
-    return status;
+    packet.clear();
 }
 
-sf::Socket::Status TCPSocketManager::Receive(sf::Packet*& packet, sf::IpAddress& ip, unsigned short& port)
+void TCPSocketManager::Receive(sf::Packet*& packet, std::string* mssg)
 {
     sf::Packet received_packet;
-    std::string message;
     sf::TcpSocket incoming;
     incoming.receive(received_packet);
-    received_packet >> message;
+    received_packet >> *mssg;
 
     // Se procesaelmensaje
-    if(message.size() > 0)
+    if(mssg->size() > 0)
     {
-        std::cout << "Se ha recibidoelmensaje:" << message;
-        message.clear();
+        std::cout << "Se ha recibidoelmensaje:" << *mssg;
+        received_packet.clear();
     }
 
     // DesconectarTCP Listener
     dispatcher.close();
-
-    return sf::Socket::Status();
 }
 
 sf::Socket::Status TCPSocketManager::Connect(unsigned short port, sf::IpAddress ip)
 {
-    sf::Socket::Status status = sock.connect(ip, port, sf::seconds(5.f));
+    sf::Socket::Status status = socket.connect(ip, port, sf::seconds(5.f));
     if (status != sf::Socket::Done)
     {
         //No se ha podido conectar
@@ -72,4 +62,10 @@ sf::Socket::Status TCPSocketManager::Connect(unsigned short port, sf::IpAddress 
     }
 
     return status;
+}
+
+void TCPSocketManager::Disconnect()
+{
+    dispatcher.close();
+    socket.disconnect();
 }
