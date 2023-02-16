@@ -30,11 +30,12 @@ void TCPSocketManager::Send(sf::Packet& packet, std::string* mssg)
     if (status != sf::Socket::Done)
     {
         // Error when sending data
+        std::cout << "Error sending message" << std::endl;
     }
     packet.clear();
 }
 
-void TCPSocketManager::Receive(sf::Packet*& packet, std::string* mssg)
+void TCPSocketManager::Receive(sf::Packet packet, std::string* mssg)
 {
     sf::Packet received_packet;
     sf::TcpSocket incoming;
@@ -44,7 +45,12 @@ void TCPSocketManager::Receive(sf::Packet*& packet, std::string* mssg)
     // Se procesaelmensaje
     if(mssg->size() > 0)
     {
-        std::cout << "Se ha recibidoelmensaje:" << *mssg;
+        if (*mssg == "exit") 
+        {
+            // Manages the desconection
+            Disconnect();
+        }
+        std::cout << "Received message: " << *mssg;
         received_packet.clear();
     }
 
