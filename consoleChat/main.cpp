@@ -7,7 +7,7 @@
 
 const unsigned short PORT = 5000;
 const sf::IpAddress IP = "127.0.0.1";
-bool applicationRunning = false;
+bool applicationRunning = true;
 
 // Function to read from console (adapted for threads)
 void GetLineFromCin(std::string* mssg) 
@@ -17,6 +17,7 @@ void GetLineFromCin(std::string* mssg)
 		std::string line;
 		std::getline(std::cin, line);
 		mssg->assign(line);
+		std::cout << mssg << std::endl;
 	}
 }
 
@@ -37,7 +38,6 @@ void main()
 	server_mode = std::stoi(mode_str);
 
 	TCPSocketManager tcpSocketManager;
-
 
 	if (server_mode == 1) 
 	{

@@ -3,11 +3,11 @@
 
 sf::Socket::Status TCPSocketManager::Listen(unsigned short port, sf::IpAddress ip)
 {
-    sf::Socket::Status status = dispatcher.listen(5000, "127.0.0.1");
+    sf::Socket::Status status = dispatcher.listen(port, ip);
     if (status != sf::Socket::Done)
     {
         //No se puede vincular al puerto 5000
-        std::cout << "Error al escuchar el puerto 5000";
+        std::cout << "Error al escuchar el puerto " + port << std::endl;
         return status;
     }
 
@@ -16,7 +16,7 @@ sf::Socket::Status TCPSocketManager::Listen(unsigned short port, sf::IpAddress i
     if (dispatcher.accept(incoming) != sf::Socket::Done)
     {
         //Error al aceptar conexión
-        std::cout << "Error al aceptar conexión";
+        std::cout << "Error al aceptar conexión" << std::endl;
     }
 
     return status;
@@ -26,7 +26,7 @@ void TCPSocketManager::Send(sf::Packet& packet, std::string* mssg)
 {
     packet << mssg;
     sf::Socket::Status status = socket.send(packet);
-    std::cout << "Message sent:" << mssg << std::endl;
+    std::cout << "Message sent: " << mssg << std::endl;
     if (status != sf::Socket::Done)
     {
         // Error when sending data
@@ -35,12 +35,12 @@ void TCPSocketManager::Send(sf::Packet& packet, std::string* mssg)
     packet.clear();
 }
 
-void TCPSocketManager::Receive(sf::Packet packet, std::string* mssg)
+void TCPSocketManager::Receive(sf::Packet& packet, std::string* mssg)
 {
-    sf::Packet received_packet;
+    //sf::Packet received_packet;
     sf::TcpSocket incoming;
-    incoming.receive(received_packet);
-    received_packet >> *mssg;
+    incoming.receive(packet);
+    packet >> *mssg;
 
     // Se procesaelmensaje
     if(mssg->size() > 0)
@@ -50,8 +50,8 @@ void TCPSocketManager::Receive(sf::Packet packet, std::string* mssg)
             // Manages the desconection
             Disconnect();
         }
-        std::cout << "Received message: " << *mssg;
-        received_packet.clear();
+        std::cout << "Received message: " << *mssg << std::endl;
+        packet.clear();
     }
 
     // DesconectarTCP Listener
@@ -64,7 +64,7 @@ sf::Socket::Status TCPSocketManager::Connect(unsigned short port, sf::IpAddress 
     if (status != sf::Socket::Done)
     {
         //No se ha podido conectar
-        std::cout << "Error al conectarsecon elservidor";
+        std::cout << "Error al conectarse con el servidor" << std::endl;
     }
 
     return status;
