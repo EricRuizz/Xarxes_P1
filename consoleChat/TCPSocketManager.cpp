@@ -22,24 +22,25 @@ sf::Socket::Status TCPSocketManager::Listen(unsigned short port, sf::IpAddress i
     return status;
 }
 
-void TCPSocketManager::Send(sf::Packet& packet, std::string* mssg)
+void TCPSocketManager::Send(sf::Packet& packet, std::string mssg)
 {
-    packet << mssg;
-    sf::Socket::Status status = socket.send(packet);
+    sf::Packet pack;
+    pack << mssg;
+    sf::Socket::Status status = socket.send(pack);
     std::cout << "Message sent: " << mssg << std::endl;
     if (status != sf::Socket::Done)
     {
         // Error when sending data
         std::cout << "Error sending message" << std::endl;
     }
-    packet.clear();
+    pack.clear();
 }
 
 void TCPSocketManager::Receive(sf::Packet& packet, std::string* mssg)
 {
     //sf::Packet received_packet;
     sf::TcpSocket incoming;
-    incoming.receive(packet);
+    socket.receive(packet);
     packet >> *mssg;
 
     // Se procesaelmensaje
@@ -48,14 +49,11 @@ void TCPSocketManager::Receive(sf::Packet& packet, std::string* mssg)
         if (*mssg == "exit") 
         {
             // Manages the desconection
-            Disconnect();
+            //Disconnect();
         }
         std::cout << "Received message: " << *mssg << std::endl;
         packet.clear();
     }
-
-    // DesconectarTCP Listener
-    dispatcher.close();
 }
 
 sf::Socket::Status TCPSocketManager::Connect(unsigned short port, sf::IpAddress ip)

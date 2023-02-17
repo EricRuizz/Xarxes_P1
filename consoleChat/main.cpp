@@ -5,19 +5,19 @@
 #include <thread>
 #include "TCPSocketManager.h"
 
-const unsigned short PORT = 5000;
+const unsigned short PORT = 4999;
 const sf::IpAddress IP = "127.0.0.1";
 bool applicationRunning = true;
 
 // Function to read from console (adapted for threads)
 void GetLineFromCin(std::string* mssg) 
 {
+
 	while (applicationRunning) 
 	{
 		std::string line;
 		std::getline(std::cin, line);
 		mssg->assign(line);
-		std::cout << mssg << std::endl;
 	}
 }
 
@@ -70,16 +70,11 @@ void main()
 				}
 				else 
 				{
-					tcpSocketManager.Send(outPacket, &sendMessage);
+					tcpSocketManager.Send(outPacket, sendMessage);
 					sendMessage.clear();
 				}
 			}
 		}
-
-		// When the application loop is broken, we have to release resources.
-		tcpSocketManager.Disconnect();
-		tcpScoketReceive.join();
-		getLines.join();
 	}
 	else if (server_mode == 2) {
 
@@ -97,40 +92,30 @@ void main()
 		std::thread getLines(GetLineFromCin, &sendMessage);
 		getLines.detach();
 
-		switch (status)
+		while (applicationRunning)
 		{
-		case sf::Socket::Done:
-			std::cout << "DONE" << std::endl;
-
-			while (applicationRunning)
+			if (status != sf::Socket::Done)
 			{
-				if (sendMessage.size() > 0)
+				applicationRunning = false;
+				break;
+			}
+
+			if (sendMessage.size() > 0)
+			{
+				if (sendMessage == "exit")
 				{
-					if (sendMessage == "exit")
-					{
-						// Desconection
-						applicationRunning = false;
-						sendMessage.clear();
-						break;
-					}
-					else
-					{
-						tcpSocketManager.Send(outPacket, &sendMessage);
-						sendMessage.clear();
-					}
+					// Desconection
+					applicationRunning = false;
+					sendMessage.clear();
+					break;
+				}
+				else
+				{
+					tcpSocketManager.Send(outPacket, sendMessage);
+					sendMessage.clear();
 				}
 			}
-			break;
-
-		case sf::Socket::Disconnected:
-		case sf::Socket::Error:
-		default:
-			applicationRunning = false;
-			break;
 		}
-		tcpSocketManager.Disconnect();
-		tcpSocketReceive.join();
-		getLines.join();
 	}
 
 	tcpSocketManager.Disconnect();
