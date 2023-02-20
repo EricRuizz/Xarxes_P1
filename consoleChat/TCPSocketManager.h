@@ -5,12 +5,12 @@
 class TCPSocketManager
 {
     sf::TcpSocket socket;
-    sf::TcpListener dispatcher;
+    sf::TcpListener listener;
 
 public:
     sf::Socket::Status Listen(unsigned short port, sf::IpAddress ip);
-    void Send(sf::Packet& packet, std::string mssg);
-    void Receive(sf::Packet& packet, std::string* mssg);
+    void Send(std::string mssg);
+    void Receive(std::string* mssg);
     sf::Socket::Status Connect(unsigned short port, sf::IpAddress ip);
     void Disconnect();
     unsigned short GetLocalPort();

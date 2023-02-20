@@ -3,56 +3,66 @@
 
 sf::Socket::Status TCPSocketManager::Listen(unsigned short port, sf::IpAddress ip)
 {
-    sf::Socket::Status status = dispatcher.listen(port, ip);
-    if (status != sf::Socket::Done)
+    sf::Socket::Status status = listener.listen(port, ip);
+    if (status != sf::Socket::Status::Done)
     {
         //No se puede vincular al puerto 5000
         std::cout << "Error al escuchar el puerto " + port << std::endl;
         return status;
     }
 
-    sf::TcpSocket incoming;
     //Al conectarse un cliente, el socket incoming pasa a ser el que utilizan este cliente y el servidor para comunicarse en exclusiva
-    if (dispatcher.accept(incoming) != sf::Socket::Done)
+    if (listener.accept(socket) != sf::Socket::Done)
     {
         //Error al aceptar conexión
         std::cout << "Error al aceptar conexión" << std::endl;
+        return sf::Socket::Status::Error;
     }
 
     return status;
 }
 
-void TCPSocketManager::Send(sf::Packet& packet, std::string mssg)
+void TCPSocketManager::Send(std::string message)
 {
-    sf::Packet pack;
-    pack << mssg;
-    sf::Socket::Status status = socket.send(pack);
-    std::cout << "Message sent: " << mssg << std::endl;
-    if (status != sf::Socket::Done)
+    sf::Packet packet;
+    packet << message;
+
+    sf::Socket::Status status = socket.send(packet);
+    std::cout << "Message sent: " << message << std::endl;
+    if (status != sf::Socket::Status::Done)
     {
         // Error when sending data
         std::cout << "Error sending message" << std::endl;
+        return;
     }
-    pack.clear();
+
+    packet.clear();
 }
 
-void TCPSocketManager::Receive(sf::Packet& packet, std::string* mssg)
+void TCPSocketManager::Receive(std::string* mssg)
 {
-    //sf::Packet received_packet;
-    sf::TcpSocket incoming;
-    socket.receive(packet);
-    packet >> *mssg;
+    sf::Packet packet;
+
+    sf::Socket::Status status = socket.receive(packet);
+    if (status != sf::Socket::Status::Done)
+    {
+        std::cout << "Error receiving message" << std::endl;
+        return;
+    }
+
+    std::string masaje;
+    packet >> masaje;
 
     // Se procesaelmensaje
-    if(mssg->size() > 0)
+    if(masaje.size() > 0)
     {
-        if (*mssg == "exit") 
+        if (masaje == "exit")
         {
             // Manages the desconection
-            //Disconnect();
+            Disconnect();
         }
-        std::cout << "Received message: " << *mssg << std::endl;
-        packet.clear();
+        std::cout << "Received message: " << masaje << std::endl;
+        mssg->assign(masaje);
     }
 }
 
@@ -70,6 +80,6 @@ sf::Socket::Status TCPSocketManager::Connect(unsigned short port, sf::IpAddress 
 
 void TCPSocketManager::Disconnect()
 {
-    dispatcher.close();
+    listener.close();
     socket.disconnect();
 }

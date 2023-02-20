@@ -21,15 +21,107 @@ void GetLineFromCin(std::string* mssg)
 	}
 }
 
-void OpenReceiveThread(TCPSocketManager* _tcpSocketManager, sf::Packet _packet, std::string* _mssg)
+void OpenReceiveThread(TCPSocketManager* _tcpSocketManager, std::string* _mssg)
 {
 	while (applicationRunning)
 	{
-		_tcpSocketManager->Receive(_packet, _mssg);
+		_tcpSocketManager->Receive(_mssg);
 	}
 }
 
-void main() 
+bool SendLogic(TCPSocketManager* tcpSocketManager, std::string* message)
+{
+	if (message->size() > 0)
+	{
+		if (*message == "exit")
+		{
+			// Desconection
+			applicationRunning = false;
+			message->clear();
+			return false;
+		}
+		else
+		{
+			tcpSocketManager->Send(*message);
+			message->clear();
+		}
+	}
+
+	return true;
+}
+
+void Server()
+{
+	std::cout << "Server mode running" << std::endl;
+
+	TCPSocketManager tcpSocketManager;
+	// server connect
+	if (tcpSocketManager.Listen(PORT, IP) != sf::Socket::Status::Done)
+	{
+		std::cout << "Error connecting" << std::endl;
+		return;
+	}
+
+	//sf::Packet inPacket, outPacket;
+	std::string sendMessage, receiveMessage;
+
+	// Logic for receiving
+	std::thread tcpScoketReceive(OpenReceiveThread, &tcpSocketManager, &receiveMessage);
+	tcpScoketReceive.detach();
+
+	std::thread getLines(GetLineFromCin, &sendMessage);
+	getLines.detach();
+
+	std::cout << "Client connected" << std::endl;
+	while (applicationRunning)
+	{
+		// Logic for sending
+		if (SendLogic(&tcpSocketManager, &sendMessage) != true)
+		{
+			break;
+		}
+	}
+
+	tcpSocketManager.Disconnect();
+}
+
+void Client()
+{
+	std::cout << "Client mode running" << std::endl;
+	
+	TCPSocketManager tcpSocketManager;
+	// client connect
+	sf::Socket::Status status = tcpSocketManager.Connect(PORT, IP);
+
+	//sf::Packet inPacket, outPacket;
+	std::string sendMessage, receiveMessage;
+
+	// Logic for receiving
+	std::thread tcpSocketReceive(OpenReceiveThread, &tcpSocketManager, &receiveMessage);
+	tcpSocketReceive.detach();
+
+	std::thread getLines(GetLineFromCin, &sendMessage);
+	getLines.detach();
+
+	while (applicationRunning)
+	{
+		if (status != sf::Socket::Done)
+		{
+			applicationRunning = false;
+			break;
+		}
+
+		// Logic for sending
+		if (SendLogic(&tcpSocketManager, &sendMessage) != true)
+		{
+			break;
+		}
+	}
+
+	tcpSocketManager.Disconnect();
+}
+
+void main()
 {
 	int server_mode;
 	std::string mode_str;
@@ -37,86 +129,12 @@ void main()
 	std::cin >> mode_str;
 	server_mode = std::stoi(mode_str);
 
-	TCPSocketManager tcpSocketManager;
-
 	if (server_mode == 1) 
 	{
-		std::cout << "Server mode running" << std::endl;
-		// server connect
-		tcpSocketManager.Listen(PORT, IP);
-
-		sf::Packet inPacket, outPacket;
-		std::string sendMessage, receiveMessage;
-
-		// Logic for receiving
-		std::thread tcpScoketReceive(OpenReceiveThread, &tcpSocketManager, inPacket, &receiveMessage);
-		tcpScoketReceive.detach();
-
-		std::thread getLines(GetLineFromCin, &sendMessage);
-		getLines.detach();
-
-		std::cout << "Client connected" << std::endl;
-		while (applicationRunning) 
-		{
-			// Logic for sending
-			if (sendMessage.size() > 0) 
-			{
-				if (sendMessage == "exit") 
-				{
-					// Desconection
-					applicationRunning = false;
-					sendMessage.clear();
-					break;
-				}
-				else 
-				{
-					tcpSocketManager.Send(outPacket, sendMessage);
-					sendMessage.clear();
-				}
-			}
-		}
+		Server();
 	}
-	else if (server_mode == 2) {
-
-		std::cout << "Client mode running" << std::endl;
-		// client connect
-		sf::Socket::Status status = tcpSocketManager.Connect(PORT, IP);
-
-		sf::Packet inPacket, outPacket;
-		std::string sendMessage, receiveMessage;
-
-		// Logic for receiving
-		std::thread tcpSocketReceive(OpenReceiveThread, &tcpSocketManager, inPacket, &receiveMessage);
-		tcpSocketReceive.detach();
-
-		std::thread getLines(GetLineFromCin, &sendMessage);
-		getLines.detach();
-
-		while (applicationRunning)
-		{
-			if (status != sf::Socket::Done)
-			{
-				applicationRunning = false;
-				break;
-			}
-
-			if (sendMessage.size() > 0)
-			{
-				if (sendMessage == "exit")
-				{
-					// Desconection
-					applicationRunning = false;
-					sendMessage.clear();
-					break;
-				}
-				else
-				{
-					tcpSocketManager.Send(outPacket, sendMessage);
-					sendMessage.clear();
-				}
-			}
-		}
+	else if (server_mode == 2)
+	{
+		Client();
 	}
-
-	tcpSocketManager.Disconnect();
 }
