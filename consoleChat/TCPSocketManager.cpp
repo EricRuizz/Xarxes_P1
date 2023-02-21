@@ -3,37 +3,87 @@
 
 sf::Socket::Status TCPSocketManager::Listen(unsigned short port, sf::IpAddress ip)
 {
-    sf::Socket::Status status = listener.listen(port, ip);
-    if (status != sf::Socket::Status::Done)
-    {
-        //No se puede vincular al puerto 5000
-        std::cout << "Error al escuchar el puerto " + port << std::endl;
-        return status;
-    }
 
-    //Al conectarse un cliente, el socket incoming pasa a ser el que utilizan este cliente y el servidor para comunicarse en exclusiva
-    if (listener.accept(socket) != sf::Socket::Done)
+    // Make the selector wait for data on any socket
+    if (selector.wait())
     {
-        //Error al aceptar conexión
-        std::cout << "Error al aceptar conexión" << std::endl;
-        return sf::Socket::Status::Error;
-    }
+        // Test the listener
+        if (selector.isReady(listener))
+        {
+            // The listener is ready: there is a pending connection
+            sf::TcpSocket* client = new sf::TcpSocket;
+            if (listener.accept(*client) == sf::Socket::Done)
+            {
+                // Add the new client to the clients list
+                sockets.push_back(client);
 
-    return status;
+                // Add the new client to the selector so that we will
+                // be notified when he sends something
+                selector.add(*client);
+            }
+            else
+            {
+                // Error, we won't get a new connection, delete the socket
+                delete client;
+            }
+        }
+        else
+        {
+            // The listener socket is not ready, test all other sockets (the clients)
+            for (std::list<sf::TcpSocket*>::iterator it = sockets.begin(); it != sockets.end(); ++it)
+            {
+                sf::TcpSocket& client = **it;
+                if (selector.isReady(client))
+                {
+                    // The client has sent some data, we can receive it
+                    sf::Packet packet;
+                    if (client.receive(packet) == sf::Socket::Done)
+                    {
+                        std::string tempMssg;
+                        packet >> tempMssg;
+                        Receive(&tempMssg);
+                    }
+                }
+            }
+        }
+    }
 }
 
-void TCPSocketManager::Send(std::string message)
+void TCPSocketManager::ServerSend(std::string message)
 {
     sf::Packet packet;
     packet << message;
 
-    sf::Socket::Status status = socket.send(packet);
-    std::cout << "Message sent: " << message << std::endl;
-    if (status != sf::Socket::Status::Done)
+    for each (sf::TcpSocket * targetSocket in sockets)
     {
-        // Error when sending data
-        std::cout << "Error sending message" << std::endl;
-        return;
+        sf::Socket::Status status = targetSocket->send(packet);
+        std::cout << "Message sent: " << message << std::endl;
+        if (status != sf::Socket::Status::Done)
+        {
+            // Error when sending data
+            std::cout << "Error sending message" << std::endl;
+            return;
+        }
+    }
+
+    packet.clear();
+}
+
+void TCPSocketManager::ClientSend(std::string message)
+{
+    sf::Packet packet;
+    packet << message;
+
+    for each (sf::TcpSocket* targetSocket in sockets)
+    {
+        sf::Socket::Status status = targetSocket->send(packet);
+        std::cout << "Message sent: " << message << std::endl;
+        if (status != sf::Socket::Status::Done)
+        {
+            // Error when sending data
+            std::cout << "Error sending message" << std::endl;
+            return;
+        }
     }
 
     packet.clear();
@@ -42,8 +92,9 @@ void TCPSocketManager::Send(std::string message)
 void TCPSocketManager::Receive(std::string* mssg)
 {
     sf::Packet packet;
+    sf::TcpSocket* socket = *sockets.begin();
 
-    sf::Socket::Status status = socket.receive(packet);
+    sf::Socket::Status status = socket->receive(packet);
     if (status != sf::Socket::Status::Done)
     {
         std::cout << "Error receiving message" << std::endl;
@@ -68,7 +119,11 @@ void TCPSocketManager::Receive(std::string* mssg)
 
 sf::Socket::Status TCPSocketManager::Connect(unsigned short port, sf::IpAddress ip)
 {
-    sf::Socket::Status status = socket.connect(ip, port, sf::seconds(5.f));
+    sf::TcpSocket* server = new sf::TcpSocket;
+    sockets.push_back(server);
+
+    sf::TcpSocket* socket = *sockets.begin();
+    sf::Socket::Status status = socket->connect(ip, port, sf::seconds(5.f));
     if (status != sf::Socket::Done)
     {
         //No se ha podido conectar
@@ -81,5 +136,14 @@ sf::Socket::Status TCPSocketManager::Connect(unsigned short port, sf::IpAddress 
 void TCPSocketManager::Disconnect()
 {
     listener.close();
-    socket.disconnect();
+
+    for each (sf::TcpSocket* socket in sockets)
+    {
+        socket->disconnect();
+    }
+}
+
+void TCPSocketManager::AddListener()
+{
+    selector.add(listener);
 }

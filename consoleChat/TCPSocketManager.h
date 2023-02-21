@@ -1,17 +1,28 @@
 #pragma once 
 #include <SFML\Network.hpp>
 #include <string>
+#include <list>
 
 class TCPSocketManager
 {
-    sf::TcpSocket socket;
+    std::list<sf::TcpSocket*> sockets;
     sf::TcpListener listener;
+    sf::SocketSelector selector;
 
 public:
+    enum MessageTypes
+    {
+        LOGIN,
+        MESSAGE,
+        DISCONNECT,
+        COUNT
+    };
+
     sf::Socket::Status Listen(unsigned short port, sf::IpAddress ip);
-    void Send(std::string mssg);
+    void ServerSend(std::string mssg);
+    void ClientSend(std::string mssg);
     void Receive(std::string* mssg);
     sf::Socket::Status Connect(unsigned short port, sf::IpAddress ip);
     void Disconnect();
-    unsigned short GetLocalPort();
+    void AddListener();
 };
