@@ -31,13 +31,13 @@ void OpenReceiveThread(TCPSocketManager* _tcpSocketManager, std::string* _mssg)
 {
 	while (applicationRunning)
 	{
-		_tcpSocketManager->Receive(_mssg);
+		_tcpSocketManager->ClientReceive(_mssg);
 	}
 }
 
 void OpenListener(TCPSocketManager* _tcpSocketManager)
 {
-	_tcpSocketManager->AddListener();
+	_tcpSocketManager->AddListener(PORT);
 
 	while (applicationRunning)
 	{
@@ -82,12 +82,6 @@ void Server()
 
 	std::vector<std::string> usernames;
 	TCPSocketManager tcpSocketManager;
-	// server connect
-	if (tcpSocketManager.Listen(PORT, IP) != sf::Socket::Status::Done)
-	{
-		std::cout << "Error connecting" << std::endl;
-		return;
-	}
 
 	//sf::Packet inPacket, outPacket;
 	std::string sendMessage, receiveMessage;
@@ -99,7 +93,6 @@ void Server()
 	std::thread getLines(GetLineFromCin, &sendMessage);
 	getLines.detach();
 
-	std::cout << "Client connected" << std::endl;
 	while (applicationRunning)
 	{
 		// Logic for sending
@@ -125,10 +118,12 @@ void Client()
 	//sf::Packet inPacket, outPacket;
 	std::string sendMessage, receiveMessage;
 
+	std::cout << "EEE" << std::endl;
 	// Logic for receiving
 	std::thread tcpSocketReceive(OpenReceiveThread, &tcpSocketManager, &receiveMessage);
 	tcpSocketReceive.detach();
 
+	std::cout << "AAA" << std::endl;
 	std::thread getLines(GetLineFromCin, &sendMessage);
 	getLines.detach();
 

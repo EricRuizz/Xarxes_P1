@@ -21,8 +21,9 @@ public:
     sf::Socket::Status Listen(unsigned short port, sf::IpAddress ip);
     void ServerSend(std::string mssg);
     void ClientSend(std::string mssg);
-    void Receive(std::string* mssg);
+    void ServerReceive(std::string* mssg);
+    void ClientReceive(std::string* mssg);
     sf::Socket::Status Connect(unsigned short port, sf::IpAddress ip);
     void Disconnect();
-    void AddListener();
+    void AddListener(unsigned short port);
 };

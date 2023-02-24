@@ -3,7 +3,6 @@
 
 sf::Socket::Status TCPSocketManager::Listen(unsigned short port, sf::IpAddress ip)
 {
-
     // Make the selector wait for data on any socket
     if (selector.wait())
     {
@@ -20,6 +19,8 @@ sf::Socket::Status TCPSocketManager::Listen(unsigned short port, sf::IpAddress i
                 // Add the new client to the selector so that we will
                 // be notified when he sends something
                 selector.add(*client);
+
+                std::cout << "Added client" << std::endl;
             }
             else
             {
@@ -41,12 +42,14 @@ sf::Socket::Status TCPSocketManager::Listen(unsigned short port, sf::IpAddress i
                     {
                         std::string tempMssg;
                         packet >> tempMssg;
-                        Receive(&tempMssg);
+                        ServerReceive(&tempMssg);
                     }
                 }
             }
         }
     }
+
+    return sf::Socket::Done;
 }
 
 void TCPSocketManager::ServerSend(std::string message)
@@ -89,7 +92,7 @@ void TCPSocketManager::ClientSend(std::string message)
     packet.clear();
 }
 
-void TCPSocketManager::Receive(std::string* mssg)
+void TCPSocketManager::ServerReceive(std::string* mssg)
 {
     sf::Packet packet;
     sf::TcpSocket* socket = *sockets.begin();
@@ -105,7 +108,35 @@ void TCPSocketManager::Receive(std::string* mssg)
     packet >> masaje;
 
     // Se procesaelmensaje
-    if(masaje.size() > 0)
+    if (masaje.size() > 0)
+    {
+        if (masaje == "exit")
+        {
+            // Manages the desconection
+            Disconnect();
+        }
+        std::cout << "Received message: " << masaje << std::endl;
+        mssg->assign(masaje);
+    }
+}
+
+void TCPSocketManager::ClientReceive(std::string* mssg)
+{
+    sf::Packet packet;
+    sf::TcpSocket* socket = *sockets.begin();
+
+    sf::Socket::Status status = socket->receive(packet);
+    if (status != sf::Socket::Status::Done)
+    {
+        std::cout << "Error receiving message" << std::endl;
+        return;
+    }
+
+    std::string masaje;
+    packet >> masaje;
+
+    // Se procesaelmensaje
+    if (masaje.size() > 0)
     {
         if (masaje == "exit")
         {
@@ -122,8 +153,7 @@ sf::Socket::Status TCPSocketManager::Connect(unsigned short port, sf::IpAddress 
     sf::TcpSocket* server = new sf::TcpSocket;
     sockets.push_back(server);
 
-    sf::TcpSocket* socket = *sockets.begin();
-    sf::Socket::Status status = socket->connect(ip, port, sf::seconds(5.f));
+    sf::Socket::Status status = (*sockets.begin())->connect(ip, port, sf::seconds(5.f));
     if (status != sf::Socket::Done)
     {
         //No se ha podido conectar
@@ -143,7 +173,8 @@ void TCPSocketManager::Disconnect()
     }
 }
 
-void TCPSocketManager::AddListener()
+void TCPSocketManager::AddListener(unsigned short port)
 {
+    listener.listen(port);
     selector.add(listener);
 }
