@@ -39,9 +39,7 @@ sf::Socket::Status TCPSocketManager::Listen(unsigned short port, sf::IpAddress i
                     sf::Packet packet;
                     if (client.receive(packet) == sf::Socket::Done)
                     {
-                        std::string tempMssg;
-                        packet >> tempMssg;
-                        ServerReceive(&tempMssg);
+                        ServerReceive(packet);
                     }
                 }
             }
@@ -71,15 +69,11 @@ void TCPSocketManager::ServerSend(std::string message)
     packet.clear();
 }
 
-void TCPSocketManager::ClientSend(std::string message)
+void TCPSocketManager::ClientSend(sf::Packet infoPack)
 {
-    sf::Packet packet;
-    packet << message;
-
     for each (sf::TcpSocket* targetSocket in sockets)
     {
-        sf::Socket::Status status = targetSocket->send(packet);
-        std::cout << "Message sent: " << message << std::endl;
+        sf::Socket::Status status = targetSocket->send(infoPack);
         if (status != sf::Socket::Status::Done)
         {
             // Error when sending data
@@ -88,24 +82,46 @@ void TCPSocketManager::ClientSend(std::string message)
         }
     }
 
-    packet.clear(); // we might not need this
+    infoPack.clear();
 }
 
-void TCPSocketManager::ServerReceive(std::string* mssg)
+void TCPSocketManager::ServerReceive(sf::Packet receivedPacket)
 {
-    // Se procesaelmensaje
-    if (mssg->size() > 0)
-    {
-        if (*mssg == "exit")
-        {
-            // Manages the desconection
-            Disconnect();
-        }
-        std::cout << "Received message: " << *mssg << std::endl;
-        mssg->assign(*mssg);
+    int tempMode;
+    std::string tempUsername;
+    std::string tempMssg;
+    receivedPacket >> tempMode >> tempUsername >> tempMssg;
+    std::cout << tempMode << " " << tempUsername << " " << tempMssg << std::endl;
 
-        //ServerSend(masaje); // Send received message to all clients
+    switch (tempMode)
+    {
+    case TCPSocketManager::LOGIN:
+        usernames.push_back(tempUsername);
+        std::cout << "New username: " << tempUsername << std::endl;
+        break;
+    case TCPSocketManager::MESSAGE:
+        if (tempMssg.size() > 0)
+        {
+            if (tempMssg == "exit")
+            {
+                // Manages the desconection
+                Disconnect();
+                return;
+            }
+            std::cout << "Received message: " << tempMssg << std::endl;
+
+            // Send received message to all clients
+            ServerSend(tempUsername + " - " + tempMssg);
+        }
+        break;
+    case TCPSocketManager::DISCONNECT:
+        Disconnect();
+        return;
+    default:
+        break;
     }
+
+
 }
 
 void TCPSocketManager::ClientReceive(std::string* mssg)

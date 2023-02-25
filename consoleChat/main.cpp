@@ -16,6 +16,9 @@ enum Mode
 	COUNT
 };
 
+std::string username;
+bool hasLogedIn = false;
+
 // Function to read from console (adapted for threads)
 void GetLineFromCin(std::string* mssg) 
 {
@@ -45,7 +48,7 @@ void OpenListener(TCPSocketManager* _tcpSocketManager)
 	}
 }
 
-bool SendLogic(TCPSocketManager* tcpSocketManager, Mode mode, std::string* message) // Change message for packet
+bool SendLogic(TCPSocketManager* tcpSocketManager, Mode mode, sf::Packet mssgInfo, std::string* message) // Change message for packet
 {
 	if (message->size() > 0)
 	{
@@ -64,7 +67,17 @@ bool SendLogic(TCPSocketManager* tcpSocketManager, Mode mode, std::string* messa
 				tcpSocketManager->ServerSend(*message);
 				break;
 			case CLIENT:
-				tcpSocketManager->ClientSend(*message);
+				if (!hasLogedIn)
+				{
+					username = *message;
+					hasLogedIn = true;
+					mssgInfo << tcpSocketManager->LOGIN << username << *message;
+				}
+				else
+				{
+					mssgInfo << tcpSocketManager->MESSAGE << username << *message;
+				}
+				tcpSocketManager->ClientSend(mssgInfo);
 				break;
 			default:
 				break;
@@ -80,10 +93,9 @@ void Server()
 {
 	std::cout << "Server mode running" << std::endl;
 
-	std::vector<std::string> usernames;
 	TCPSocketManager tcpSocketManager;
 
-	//sf::Packet inPacket, outPacket;
+	sf::Packet infoPacket;
 	std::string sendMessage, receiveMessage;
 
 	// Logic for receiving
@@ -96,7 +108,7 @@ void Server()
 	while (applicationRunning)
 	{
 		// Logic for sending
-		if (SendLogic(&tcpSocketManager, Mode::SERVER, &sendMessage) != true)
+		if (SendLogic(&tcpSocketManager, Mode::SERVER, infoPacket, &sendMessage) != true)
 		{
 			break;
 		}
@@ -110,12 +122,11 @@ void Client()
 	std::cout << "Client mode running" << std::endl;
 	
 	TCPSocketManager tcpSocketManager;
-	std::string username;
 
 	// client connect
 	sf::Socket::Status status = tcpSocketManager.Connect(PORT, IP);
 
-	//sf::Packet inPacket, outPacket;
+	sf::Packet infoPacket;
 	std::string sendMessage, receiveMessage;
 
 	// Logic for receiving
@@ -136,7 +147,7 @@ void Client()
 		}
 
 		// Logic for sending
-		if (SendLogic(&tcpSocketManager, Mode::CLIENT, &sendMessage) != true)
+		if (SendLogic(&tcpSocketManager, Mode::CLIENT, infoPacket, &sendMessage) != true)
 		{
 			break;
 		}
