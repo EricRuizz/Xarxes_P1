@@ -48,7 +48,7 @@ void OpenListener(TCPSocketManager* _tcpSocketManager)
 	}
 }
 
-bool SendLogic(TCPSocketManager* tcpSocketManager, Mode mode, sf::Packet mssgInfo, std::string* message) // Change message for packet
+bool SendLogic(TCPSocketManager* tcpSocketManager, Mode mode, sf::Packet mssgInfo, std::string* message)
 {
 	if (message->size() > 0)
 	{
@@ -64,7 +64,7 @@ bool SendLogic(TCPSocketManager* tcpSocketManager, Mode mode, sf::Packet mssgInf
 			switch (mode)
 			{
 			case SERVER:
-				tcpSocketManager->ServerSend(*message);
+				tcpSocketManager->ServerSendAll(*message);
 				break;
 			case CLIENT:
 				if (!hasLogedIn)

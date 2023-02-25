@@ -39,7 +39,7 @@ sf::Socket::Status TCPSocketManager::Listen(unsigned short port, sf::IpAddress i
                     sf::Packet packet;
                     if (client.receive(packet) == sf::Socket::Done)
                     {
-                        ServerReceive(packet);
+                        ServerReceive(packet, client);
                     }
                 }
             }
@@ -49,7 +49,31 @@ sf::Socket::Status TCPSocketManager::Listen(unsigned short port, sf::IpAddress i
     return sf::Socket::Done;
 }
 
-void TCPSocketManager::ServerSend(std::string message)
+
+void TCPSocketManager::ServerSend(std::string message, sf::TcpSocket& senderSocket)
+{
+    sf::Packet packet;
+    packet << message;
+
+    for each (sf::TcpSocket* targetSocket in sockets)
+    {
+        if (targetSocket != &senderSocket)
+        {
+            sf::Socket::Status status = targetSocket->send(packet);
+            std::cout << "Message sent: " << message << std::endl;
+            if (status != sf::Socket::Status::Done)
+            {
+                // Error when sending data
+                std::cout << "Error sending message" << std::endl;
+                return;
+            }
+        }
+    }
+
+    packet.clear();
+}
+
+void TCPSocketManager::ServerSendAll(std::string message)
 {
     sf::Packet packet;
     packet << message;
@@ -85,13 +109,12 @@ void TCPSocketManager::ClientSend(sf::Packet infoPack)
     infoPack.clear();
 }
 
-void TCPSocketManager::ServerReceive(sf::Packet receivedPacket)
+void TCPSocketManager::ServerReceive(sf::Packet receivedPacket, sf::TcpSocket& senderSocket)
 {
     int tempMode;
     std::string tempUsername;
     std::string tempMssg;
     receivedPacket >> tempMode >> tempUsername >> tempMssg;
-    std::cout << tempMode << " " << tempUsername << " " << tempMssg << std::endl;
 
     switch (tempMode)
     {
@@ -111,7 +134,7 @@ void TCPSocketManager::ServerReceive(sf::Packet receivedPacket)
             std::cout << "Received message: " << tempMssg << std::endl;
 
             // Send received message to all clients
-            ServerSend(tempUsername + " - " + tempMssg);
+            ServerSend(tempUsername + " - " + tempMssg, senderSocket);
         }
         break;
     case TCPSocketManager::DISCONNECT:
@@ -181,4 +204,9 @@ void TCPSocketManager::AddListener(unsigned short port)
 {
     listener.listen(port);
     selector.add(listener);
+}
+
+sf::TcpSocket* TCPSocketManager::GetSocket()
+{
+    return *sockets.begin();
 }
