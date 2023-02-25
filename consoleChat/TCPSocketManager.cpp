@@ -1,5 +1,4 @@
 #include "TCPSocketManager.h"
-#include <iostream>
 
 sf::Socket::Status TCPSocketManager::Listen(unsigned short port, sf::IpAddress ip)
 {
@@ -89,34 +88,23 @@ void TCPSocketManager::ClientSend(std::string message)
         }
     }
 
-    packet.clear();
+    packet.clear(); // we might not need this
 }
 
 void TCPSocketManager::ServerReceive(std::string* mssg)
 {
-    sf::Packet packet;
-    sf::TcpSocket* socket = *sockets.begin();
-
-    sf::Socket::Status status = socket->receive(packet);
-    if (status != sf::Socket::Status::Done)
-    {
-        std::cout << "Error receiving message" << std::endl;
-        return;
-    }
-
-    std::string masaje;
-    packet >> masaje;
-
     // Se procesaelmensaje
-    if (masaje.size() > 0)
+    if (mssg->size() > 0)
     {
-        if (masaje == "exit")
+        if (*mssg == "exit")
         {
             // Manages the desconection
             Disconnect();
         }
-        std::cout << "Received message: " << masaje << std::endl;
-        mssg->assign(masaje);
+        std::cout << "Received message: " << *mssg << std::endl;
+        mssg->assign(*mssg);
+
+        //ServerSend(masaje); // Send received message to all clients
     }
 }
 

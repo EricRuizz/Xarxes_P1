@@ -118,12 +118,10 @@ void Client()
 	//sf::Packet inPacket, outPacket;
 	std::string sendMessage, receiveMessage;
 
-	std::cout << "EEE" << std::endl;
 	// Logic for receiving
 	std::thread tcpSocketReceive(OpenReceiveThread, &tcpSocketManager, &receiveMessage);
 	tcpSocketReceive.detach();
 
-	std::cout << "AAA" << std::endl;
 	std::thread getLines(GetLineFromCin, &sendMessage);
 	getLines.detach();
 

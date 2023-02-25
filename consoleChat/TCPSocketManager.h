@@ -2,6 +2,7 @@
 #include <SFML\Network.hpp>
 #include <string>
 #include <list>
+#include <iostream>
 
 class TCPSocketManager
 {
