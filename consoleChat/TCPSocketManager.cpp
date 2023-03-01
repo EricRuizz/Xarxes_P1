@@ -78,6 +78,12 @@ void TCPSocketManager::ServerSendAll(std::string message)
     sf::Packet packet;
     packet << message;
 
+    if (message == "exit")
+    {
+        ServerSendAll("DISCONNECT");
+        Disconnect();
+    }
+
     for each (sf::TcpSocket * targetSocket in sockets)
     {
         sf::Socket::Status status = targetSocket->send(packet);
@@ -111,6 +117,7 @@ void TCPSocketManager::ClientSend(sf::Packet infoPack)
 
 void TCPSocketManager::ServerReceive(sf::Packet receivedPacket, sf::TcpSocket& senderSocket)
 {
+    //auto findResult;
     int tempMode;
     std::string tempUsername;
     std::string tempMssg;
@@ -127,8 +134,7 @@ void TCPSocketManager::ServerReceive(sf::Packet receivedPacket, sf::TcpSocket& s
         {
             if (tempMssg == "exit")
             {
-                // Manages the desconection
-                Disconnect();
+                ClientDisconected(tempUsername, senderSocket);
                 return;
             }
             std::cout << "Received message: " << tempMssg << std::endl;
@@ -138,13 +144,11 @@ void TCPSocketManager::ServerReceive(sf::Packet receivedPacket, sf::TcpSocket& s
         }
         break;
     case TCPSocketManager::DISCONNECT:
-        Disconnect();
-        return;
+        ClientDisconected(tempUsername, senderSocket);
+        break;
     default:
         break;
     }
-
-
 }
 
 void TCPSocketManager::ClientReceive(std::string* mssg)
@@ -165,7 +169,7 @@ void TCPSocketManager::ClientReceive(std::string* mssg)
     // Se procesaelmensaje
     if (masaje.size() > 0)
     {
-        if (masaje == "exit")
+        if (masaje == "DISCONNECT")
         {
             // Manages the desconection
             Disconnect();
@@ -188,6 +192,21 @@ sf::Socket::Status TCPSocketManager::Connect(unsigned short port, sf::IpAddress 
     }
 
     return status;
+}
+
+void TCPSocketManager::ClientDisconected(std::string username, sf::TcpSocket& clientSocket)
+{
+    auto findUsername = std::find(usernames.begin(), usernames.end(), username);
+    if (findUsername != usernames.end())
+    {
+        usernames.erase(findUsername);
+    }
+
+    //sockets.remove(&clientSocket); // <-- Peta :(
+
+    users.erase(username);
+
+    std::cout << username << " disconected" << std::endl;
 }
 
 void TCPSocketManager::Disconnect()

@@ -4,6 +4,7 @@
 #include <list>
 #include <iostream>
 #include <map>
+#include <algorithm>
 
 class TCPSocketManager
 {
@@ -29,6 +30,7 @@ public:
     void ServerReceive(sf::Packet receivedPacket, sf::TcpSocket& senderSocket);
     void ClientReceive(std::string* mssg);
     sf::Socket::Status Connect(unsigned short port, sf::IpAddress ip);
+    void ClientDisconected(std::string username, sf::TcpSocket& clientSocket);
     void Disconnect();
     void AddListener(unsigned short port);
     sf::TcpSocket* GetSocket();

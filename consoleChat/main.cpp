@@ -55,6 +55,20 @@ bool SendLogic(TCPSocketManager* tcpSocketManager, Mode mode, sf::Packet mssgInf
 		if (*message == "exit")
 		{
 			// Desconection
+			switch (mode)
+			{
+			case SERVER:
+				tcpSocketManager->ServerSendAll("DISCONNECT");
+				break;
+			case CLIENT:
+				std::cout << "CLIENT DISCONECT" << std::endl;
+				mssgInfo << tcpSocketManager->DISCONNECT << username << *message;
+				tcpSocketManager->ClientSend(mssgInfo);
+				break;
+			default:
+				break;
+			}
+
 			applicationRunning = false;
 			message->clear();
 			return false;
@@ -153,6 +167,8 @@ void Client()
 		}
 	}
 
+	sendMessage = "exit";
+	SendLogic(&tcpSocketManager, Mode::CLIENT, infoPacket, &sendMessage);
 	tcpSocketManager.Disconnect();
 }
 
