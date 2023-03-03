@@ -202,9 +202,7 @@ void TCPSocketManager::ClientDisconected(std::string username, sf::TcpSocket& cl
         usernames.erase(findUsername);
     }
 
-    //sockets.remove(&clientSocket); // <-- Peta :(
-
-    users.erase(username);
+    sockets.remove(&clientSocket); // <-- Peta
 
     std::cout << username << " disconected" << std::endl;
 }
