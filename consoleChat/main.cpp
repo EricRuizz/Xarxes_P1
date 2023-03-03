@@ -5,14 +5,23 @@
 #include <thread>
 #include "TCPSocketManager.h"
 
-const unsigned short PORT = 4999;
+const unsigned short PORT = 5000;
 const sf::IpAddress IP = "127.0.0.1";
 bool applicationRunning = true;
+
+enum Mode
+{
+	SERVER,
+	CLIENT,
+	COUNT
+};
+
+std::string username;
+bool hasLogedIn = false;
 
 // Function to read from console (adapted for threads)
 void GetLineFromCin(std::string* mssg) 
 {
-
 	while (applicationRunning) 
 	{
 		std::string line;
@@ -25,24 +34,68 @@ void OpenReceiveThread(TCPSocketManager* _tcpSocketManager, std::string* _mssg)
 {
 	while (applicationRunning)
 	{
-		_tcpSocketManager->Receive(_mssg);
+		_tcpSocketManager->ClientReceive(_mssg);
 	}
 }
 
-bool SendLogic(TCPSocketManager* tcpSocketManager, std::string* message)
+void OpenListener(TCPSocketManager* _tcpSocketManager)
+{
+	_tcpSocketManager->AddListener(PORT);
+
+	while (applicationRunning)
+	{
+		_tcpSocketManager->Listen(PORT, IP);
+	}
+}
+
+bool SendLogic(TCPSocketManager* tcpSocketManager, Mode mode, sf::Packet mssgInfo, std::string* message)
 {
 	if (message->size() > 0)
 	{
 		if (*message == "exit")
 		{
 			// Desconection
+			switch (mode)
+			{
+			case SERVER:
+				tcpSocketManager->ServerSendAll("DISCONNECT");
+				break;
+			case CLIENT:
+				std::cout << "CLIENT DISCONECT" << std::endl;
+				mssgInfo << tcpSocketManager->DISCONNECT << username << *message;
+				tcpSocketManager->ClientSend(mssgInfo);
+				break;
+			default:
+				break;
+			}
+
 			applicationRunning = false;
 			message->clear();
 			return false;
 		}
 		else
 		{
-			tcpSocketManager->Send(*message);
+			switch (mode)
+			{
+			case SERVER:
+				tcpSocketManager->ServerSendAll(*message);
+				break;
+			case CLIENT:
+				if (!hasLogedIn)
+				{
+					username = *message;
+					hasLogedIn = true;
+					mssgInfo << tcpSocketManager->LOGIN << username << *message;
+				}
+				else
+				{
+					mssgInfo << tcpSocketManager->MESSAGE << username << *message;
+				}
+				tcpSocketManager->ClientSend(mssgInfo);
+				break;
+			default:
+				break;
+			}
 			message->clear();
 		}
 	}
@@ -55,28 +108,21 @@ void Server()
 	std::cout << "Server mode running" << std::endl;
 
 	TCPSocketManager tcpSocketManager;
-	// server connect
-	if (tcpSocketManager.Listen(PORT, IP) != sf::Socket::Status::Done)
-	{
-		std::cout << "Error connecting" << std::endl;
-		return;
-	}
 
-	//sf::Packet inPacket, outPacket;
+	sf::Packet infoPacket;
 	std::string sendMessage, receiveMessage;
 
 	// Logic for receiving
-	std::thread tcpScoketReceive(OpenReceiveThread, &tcpSocketManager, &receiveMessage);
-	tcpScoketReceive.detach();
+	std::thread tcpScoketListen(OpenListener, &tcpSocketManager);
+	tcpScoketListen.detach();
 
 	std::thread getLines(GetLineFromCin, &sendMessage);
 	getLines.detach();
 
-	std::cout << "Client connected" << std::endl;
 	while (applicationRunning)
 	{
 		// Logic for sending
-		if (SendLogic(&tcpSocketManager, &sendMessage) != true)
+		if (SendLogic(&tcpSocketManager, Mode::SERVER, infoPacket, &sendMessage) != true)
 		{
 			break;
 		}
@@ -90,10 +136,11 @@ void Client()
 	std::cout << "Client mode running" << std::endl;
 	
 	TCPSocketManager tcpSocketManager;
+
 	// client connect
 	sf::Socket::Status status = tcpSocketManager.Connect(PORT, IP);
 
-	//sf::Packet inPacket, outPacket;
+	sf::Packet infoPacket;
 	std::string sendMessage, receiveMessage;
 
 	// Logic for receiving
@@ -102,6 +149,8 @@ void Client()
 
 	std::thread getLines(GetLineFromCin, &sendMessage);
 	getLines.detach();
+
+	std::cout << "Input your username:" << std::endl;
 
 	while (applicationRunning)
 	{
@@ -112,12 +161,14 @@ void Client()
 		}
 
 		// Logic for sending
-		if (SendLogic(&tcpSocketManager, &sendMessage) != true)
+		if (SendLogic(&tcpSocketManager, Mode::CLIENT, infoPacket, &sendMessage) != true)
 		{
 			break;
 		}
 	}
 
+	sendMessage = "exit";
+	SendLogic(&tcpSocketManager, Mode::CLIENT, infoPacket, &sendMessage);
 	tcpSocketManager.Disconnect();
 }
 
